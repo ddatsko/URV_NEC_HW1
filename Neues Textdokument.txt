@@ -1,0 +1,14 @@
+Types of data normalisation 
+
+two Types of Data Normalisation
+	- Data normalisation
+		- Linear transformation: range[0,1],
+		- easy normalisation with minimum and maximum of values
+
+	- Data standardisation
+	    	-Linear transformation (z-score):
+		- the values are substracted with the und divided by the standard deviation
+
+6. Which is better, normalization or standardization?
+If your feature (column) contains outliers, normalizing your data will scale most of the data to a small interval, ensuring that all 
+components have the same scale but failing to manage outliers adequately. Max-Min Normalization is rarely preferred over standardization since it is less resistant to outliers.
