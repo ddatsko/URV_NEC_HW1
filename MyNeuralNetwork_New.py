@@ -43,7 +43,7 @@ class MyNeuralNetwork:
     # for i = 0 there are no thresholds.
     self.theta.append(np.zeros((1, 1)))
     for lay in range(1,self.L):
-      self.theta.append(np.zeros(layers[lay]))
+      self.theta.append(np.random.rand(layers[lay]))
 
     self.delta = [] # values for thresholds
     # for i = 0 there are no thresholds.
@@ -56,14 +56,20 @@ class MyNeuralNetwork:
     self.d_theta.append(np.zeros((1, 1)))
     for lay in range(1,self.L):
       self.d_theta.append(np.zeros(layers[lay]))
+
+    self.d_theta_prev = [] # values for previous changes to the thresholds
+    # for i = 0 there are no thresholds, so no changes for them, so no previous changes
+    self.d_theta_prev.append(np.zeros((1, 1)))
+    for lay in range(1,self.L):
+      self.d_theta_prev.append(np.zeros(layers[lay]))
     
     self.d_w = []             # change of edge weights
     # for i = 0 there are no weights.
     self.d_w.append(np.zeros((1, 1)))
     # array is L x numberof neurons in L x number of neurons of L-1
     for lay in range(1, self.L):
-      self.d_w.append(np.random.rand(layers[lay], layers[lay - 1]))
-      #Todo: this has to be changed
+      self.d_w.append(np.zeros((layers[lay], layers[lay - 1])))
+      
 
       self.d_w_prev = []   # previois change of edge weights
     # for i = 0 there are no weights, no change of weights so no previios change of weights
@@ -110,7 +116,19 @@ class MyNeuralNetwork:
         for neuronj in range(0,self.n[lay-1]):
           self.d_w[lay][neuroni][neuronj] = ((-1)*self.learning_rate) * self.delta[lay][neuroni] * self.xi[lay-1][neuronj] + self.momentum *self.d_w_prev[lay][neuroni][neuronj]
 
+    for lay in range(1, self.L):
+      for neuroni in range(0,self.n[lay]):
+        self.d_theta[lay][neuroni] = self.learning_rate * self.delta[lay][neuroni] + self.momentum * self.d_theta_prev[lay][neuroni]
+
+    # formula 15, we update all the weights and thresholds:
+    for lay in range(1, self.L):
+      for neuroni in range(0,self.n[lay]):
+        for neuronj in range(0,self.n[lay-1]):
+          self.w[lay][neuroni][neuronj] = self.w[lay][neuroni][neuronj] + self.d_w[lay][neuroni][neuronj]
     
+    for lay in range(1, self.L):
+      for neuroni in range(0,self.n[lay]):
+        self.theta[lay][neuroni] = self.theta[lay][neuroni] + self.d_theta[lay][neuroni]
      
 
     return 1
@@ -133,6 +151,7 @@ print("xi[1] = ", nn.xi[0], end="\n")
 
 print("wh = ", nn.w, end="\n")
 print("wh[1] = ", nn.w[1][0][1], end="\n")
+print("threshold = ", nn.theta, end="\n")
 
 nn.fit([[1,2,3,4]],[[5]])
 print("xi = ", nn.xi, end="\n")
@@ -141,5 +160,11 @@ print("h = ", nn.h  ,end="\n")
 print("delta = ", nn.delta  ,end="\n")
 
 print("d_w = ", nn.d_w  ,end="\n")
+print("w = ", nn.w  ,end="\n")
+print("threshold = ", nn.theta  ,end="\n")
+
+
+
+
 
 
