@@ -163,8 +163,14 @@ class MyNeuralNetwork:
     self.d_theta_prev = [np.copy(arr) for arr in nn.d_theta]
   def loss_epochs(self):
     return self.epoch_error
+  def predict(self,X):
+    prediction = np.zeros((len(X),self.n[self.L-1]))
+    for sample in range(0,len(X)):
+      self.feedForward(X[sample])
+      prediction[sample] = self.xi[self.L-1]
+    return prediction
 
-    
+
      
   
     
@@ -192,6 +198,9 @@ nn.fit([[1,2,3,4],[5,6,7,8]],[[1],[2]])
 
 errrr = nn.loss_epochs()
 print("errror",errrr)
+
+pre= nn.predict([[1,2,3,4],[5,6,7,8]])
+print(pre)
 
 s = np.array([1,2,3,4])
 
