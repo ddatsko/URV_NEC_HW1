@@ -1,5 +1,5 @@
 import numpy as np
-
+from sklearn.model_selection import train_test_split
 
 # Neural Network class
 class MyNeuralNetwork:
@@ -80,10 +80,39 @@ class MyNeuralNetwork:
 
       
   def fit(self,X,Y):
-    # fit forward
+    # split the data
+    x_train,x_val,y_train,y_val = train_test_split(X,Y,test_size=self.percentage_of_validation,random_state=42)
+    self.epoch_error = np.zeros((self.number_of_epochs,2))
+    for epoch in range(0,self.number_of_epochs):
+      random_indices = np.random.permutation(len(x_train))
+      for sample in random_indices:
+      
+        # print("Now I am doing a iteration with:")
+        # print(f"x[{x_train[sample]}]")
+        
+         self.feedForward(x_train[sample])
+         self.backpropagation(y_train[sample])
+        # print("xi = ", self.xi, end="\n")
+
+        # print("h = ", self.h  ,end="\n")
+        # print("delta = ", self.delta  ,end="\n")
+
+        # print("d_w = ", self.d_w  ,end="\n")
+        # print("w = ", self.w  ,end="\n")
+        # print("threshold = ", self.theta  ,end="\n")
+      self.epoch_error[epoch][0] = self.meanSquaredError(x_train,y_train)
+      self.epoch_error[epoch][1]  = self.meanSquaredError(x_val,y_val)
+  def meanSquaredError(self,x_data, y_data):
+    error_temp = 0
+    for i in range(0,len(x_data)):
+      self.feedForward(x_data[i])
+      for ouput in range(0,self.n[self.L-1]):
+        error_temp = error_temp + pow(self.xi[self.L-1][ouput] - y_data[i][ouput],2)
+    return (error_temp*0.5)      
+       
+  def feedForward(self,sample):
     # forumla 1 of BP document
-    self.xi[0] = X[0]
-    y = Y[0]
+    self.xi[0] = sample
     for lay in range(1, self.L):
       for neuron in range(0,self.n[lay]):
         #formula 8
@@ -93,7 +122,7 @@ class MyNeuralNetwork:
         self.h[lay][neuron] = htemp - self.theta[lay][neuron]
         #formula 7
         self.xi[lay][neuron] = MyNeuralNetwork.activation_functions[self.activationFunctionName]["forward"](self.h[lay][neuron])
-
+  def backpropagation(self,y):
     #calculating deltas for last layer, BP document formula 11
     indexlastLayer = self.L-1 
     for neuroni in range(0,self.n[indexlastLayer]):
@@ -129,18 +158,21 @@ class MyNeuralNetwork:
     for lay in range(1, self.L):
       for neuroni in range(0,self.n[lay]):
         self.theta[lay][neuroni] = self.theta[lay][neuroni] + self.d_theta[lay][neuroni]
-     
 
-    return 1
-  def feedForward(sample):
+    self.d_w_prev = [np.copy(arr) for arr in nn.d_w]
+    self.d_theta_prev = [np.copy(arr) for arr in nn.d_theta]
+  def loss_epochs(self):
+    return self.epoch_error
+
     
-    return 1
+     
+  
     
 
 # layers include input layer + hidden layers + output layer
 
-layers = [4, 9, 5, 1]
-nn = MyNeuralNetwork(layers,4.0,0.2,0.0,'linear',0.3)
+layers = [4,1]
+nn = MyNeuralNetwork(layers, 100 ,0.01,0.01,'linear',0.1)
 
 print("L = ", nn.L, end="\n")
 print("n = ", nn.n, end="\n")
@@ -153,15 +185,16 @@ print("wh = ", nn.w, end="\n")
 print("wh[1] = ", nn.w[1][0][1], end="\n")
 print("threshold = ", nn.theta, end="\n")
 
-nn.fit([[1,2,3,4]],[[5]])
-print("xi = ", nn.xi, end="\n")
 
-print("h = ", nn.h  ,end="\n")
-print("delta = ", nn.delta  ,end="\n")
 
-print("d_w = ", nn.d_w  ,end="\n")
-print("w = ", nn.w  ,end="\n")
-print("threshold = ", nn.theta  ,end="\n")
+#nn.fit([[1,2,3,4],[5,6,7,8],[9,10,11,12],[14,15,16,17]],[[1],[2],[3],[4]])
+nn.fit([[1,2,3,4],[5,6,7,8]],[[1],[2]])
+
+errrr = nn.loss_epochs()
+print("errror",errrr)
+
+s = np.array([1,2,3,4])
+
 
 
 
