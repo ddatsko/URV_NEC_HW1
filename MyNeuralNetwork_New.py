@@ -87,28 +87,25 @@ class MyNeuralNetwork:
                                                           random_state=42)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
+        x_val = np.array(x_val)
+        y_val = np.array(y_val)
         # Due to weights placement, Xs samples have to be columns
-        x_train = x_train.T
 
         self.epoch_error = np.zeros((self.number_of_epochs, 2))
         for epoch in range(0, self.number_of_epochs):
-            random_indices = np.random.permutation(x_train.shape[1])
+            random_indices = np.random.permutation(x_train.shape[0])
             for sample in random_indices:
-                self.feedForward(x_train[:, [sample]])
+                self.feed_forward(x_train.T[:, [sample]])
                 self.backpropagation(y_train[sample])
 
-            # self.epoch_error[epoch][0] = self.meanSquaredError(x_train, y_train)
-            # self.epoch_error[epoch][1] = self.meanSquaredError(x_val, y_val)
+            self.epoch_error[epoch][0] = self.mean_squared_error(x_train, y_train)
+            self.epoch_error[epoch][1] = self.mean_squared_error(x_val, y_val)
 
-    def meanSquaredError(self, x_data, y_data):
-        error_temp = 0
-        for i in range(0, len(x_data)):
-            self.feedForward(x_data[i])
-            for ouput in range(0, self.n[self.L - 1]):
-                error_temp += pow(self.xi[self.L - 1][ouput] - y_data[i][ouput], 2)
-        return (error_temp * 0.5)
+    def mean_squared_error(self, x_data, y_data):
+        prediction = self.predict(x_data)
+        return np.mean((prediction.flatten() - y_data.flatten()) ** 2)
 
-    def feedForward(self, sample):
+    def feed_forward(self, sample):
         # forumla 1 of BP document
         self.xi[0] = sample
         # print(sample.shape)
@@ -119,7 +116,8 @@ class MyNeuralNetwork:
     def backpropagation(self, y):
         # calculating deltas for last layer, BP document formula 11
         last_layer_index = self.L - 1
-        self.delta[last_layer_index] = (self.activation_derivative(self.h[last_layer_index]) * (self.xi[last_layer_index] - y)).T
+        self.delta[last_layer_index] = (
+                    self.activation_derivative(self.h[last_layer_index]) * (self.xi[last_layer_index] - y)).T
 
         # formula 12
         # we only iterate through layers 1,2,... indextlastyear-1
@@ -129,7 +127,8 @@ class MyNeuralNetwork:
 
         # formula 14
         for lay in range(1, self.L):
-            self.d_w[lay] = -self.learning_rate * (self.xi[lay - 1] @ self.delta[lay]).T + self.momentum * self.d_w_prev[lay]
+            self.d_w[lay] = -self.learning_rate * (self.xi[lay - 1] @ self.delta[lay]).T + self.momentum * \
+                            self.d_w_prev[lay]
 
         for lay in range(1, self.L):
             self.d_theta[lay] = self.learning_rate * self.delta[lay].T + self.momentum * self.d_theta_prev[lay]
@@ -174,9 +173,7 @@ if __name__ == '__main__':
     # print("wh[1] = ", nn.w[1][0][1], end="\n")
     # print("threshold = ", nn.theta, end="\n")
     #
-    nn.fit([[1,2,3,4],[5,6,7,8],[9,10,11,12],[14,15,16,17]],[[1],[2],[3],[4]])
-
-
+    nn.fit([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [14, 15, 16, 17]], [[1], [2], [3], [4]])
 
     # nn.fit([[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]])
     #
