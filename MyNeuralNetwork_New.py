@@ -40,14 +40,14 @@ class MyNeuralNetwork:
         self.w.append(np.zeros((1, 1)))
         # array is L x numberof neurons in L x number of neurons of L-1
         for lay in range(1, self.L):
-            self.w.append(np.random.randn(layers[lay], layers[lay - 1]))
-            # Todo: this has to be changed
+            # TODO: make it dependent on activation functions. Here, we use He initialization, which is good for ReLu
+            self.w.append(np.random.randn(layers[lay], layers[lay - 1]) * np.sqrt(2 / self.n[lay - 1]))
 
         self.theta = []  # values for thresholds
         # for i = 0 there are no thresholds.
         self.theta.append(np.zeros((1, 1)))
         for lay in range(1, self.L):
-            self.theta.append(np.random.randn(layers[lay]))
+            self.theta.append(np.random.randn(layers[lay], 1) * np.sqrt(2 / self.n[lay - 1]))
 
         self.delta = []  # values for thresholds
         # for i = 0 there are no thresholds.
@@ -65,7 +65,7 @@ class MyNeuralNetwork:
         # for i = 0 there are no thresholds, so no changes for them, so no previous changes
         self.d_theta_prev.append(np.zeros((1, 1)))
         for lay in range(1, self.L):
-            self.d_theta_prev.append(np.zeros(layers[lay]))
+            self.d_theta_prev.append(np.zeros((layers[lay], 1)))
 
         self.d_w = []  # change of edge weights
         # for i = 0 there are no weights.
@@ -85,88 +85,61 @@ class MyNeuralNetwork:
         # split the data
         x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=self.percentage_of_validation,
                                                           random_state=42)
+        x_train = np.array(x_train)
+        y_train = np.array(y_train)
+        # Due to weights placement, Xs samples have to be columns
+        x_train = x_train.T
+
         self.epoch_error = np.zeros((self.number_of_epochs, 2))
         for epoch in range(0, self.number_of_epochs):
-            random_indices = np.random.permutation(len(x_train))
+            random_indices = np.random.permutation(x_train.shape[1])
             for sample in random_indices:
-                # print("Now I am doing a iteration with:")
-                # print(f"x[{x_train[sample]}]")
-
-                self.feedForward(x_train[sample])
+                self.feedForward(x_train[:, [sample]])
                 self.backpropagation(y_train[sample])
-            # print("xi = ", self.xi, end="\n")
 
-            # print("h = ", self.h  ,end="\n")
-            # print("delta = ", self.delta  ,end="\n")
-
-            # print("d_w = ", self.d_w  ,end="\n")
-            # print("w = ", self.w  ,end="\n")
-            # print("threshold = ", self.theta  ,end="\n")
-            self.epoch_error[epoch][0] = self.meanSquaredError(x_train, y_train)
-            self.epoch_error[epoch][1] = self.meanSquaredError(x_val, y_val)
+            # self.epoch_error[epoch][0] = self.meanSquaredError(x_train, y_train)
+            # self.epoch_error[epoch][1] = self.meanSquaredError(x_val, y_val)
 
     def meanSquaredError(self, x_data, y_data):
         error_temp = 0
         for i in range(0, len(x_data)):
             self.feedForward(x_data[i])
             for ouput in range(0, self.n[self.L - 1]):
-                error_temp = error_temp + pow(self.xi[self.L - 1][ouput] - y_data[i][ouput], 2)
+                error_temp += pow(self.xi[self.L - 1][ouput] - y_data[i][ouput], 2)
         return (error_temp * 0.5)
 
     def feedForward(self, sample):
         # forumla 1 of BP document
         self.xi[0] = sample
+        # print(sample.shape)
         for lay in range(1, self.L):
-            for neuron in range(0, self.n[lay]):
-                # # formula 8
-                htemp = 0
-                for neuronj in range(0, self.n[lay - 1]):
-                    htemp = htemp + (self.w[lay][neuron][neuronj] * self.xi[(lay - 1)][neuronj])
-                self.h[lay][neuron] = htemp - self.theta[lay][neuron]
-
-                # formula 7
-                self.xi[lay][neuron] = self.activation(self.h[lay][neuron])
+            self.h[lay] = self.w[lay] @ self.xi[lay - 1] - self.theta[lay]
+            self.xi[lay] = self.activation(self.h[lay])
 
     def backpropagation(self, y):
         # calculating deltas for last layer, BP document formula 11
-        indexlastLayer = self.L - 1
-        for neuroni in range(0, self.n[indexlastLayer]):
-            # what happens when z is negative? do I have to take the absolut values when doing  (o(x) - z), I think this not matters we have values in (0,1)
-            self.delta[indexlastLayer][neuroni] = self.activation_derivative(self.h[indexlastLayer][neuroni]) * (
-                                                          self.xi[indexlastLayer][neuroni] - y[neuroni])
+        last_layer_index = self.L - 1
+        self.delta[last_layer_index] = (self.activation_derivative(self.h[last_layer_index]) * (self.xi[last_layer_index] - y)).T
 
         # formula 12
         # we only iterate through layers 1,2,... indextlastyear-1
-        for lay in range((indexlastLayer - 1), 0, -1):
-            for neuronj in range(0, self.n[lay]):
-                deltatemp = 0;
-                for neuroni in range(0, self.n[lay + 1]):
-                    deltatemp = deltatemp + self.delta[lay + 1][neuroni] * self.w[lay + 1][neuroni][neuronj]
-                self.delta[lay][neuronj] = self.activation_derivative(self.h[lay][neuronj]) * deltatemp
+        for lay in range(last_layer_index - 1, 0, -1):
+            der = self.activation_derivative(self.h[lay])
+            self.delta[lay] = self.activation_derivative(self.h[lay]).T * (self.delta[lay + 1] @ self.w[lay + 1])
 
         # formula 14
         for lay in range(1, self.L):
-            for neuroni in range(0, self.n[lay]):
-                for neuronj in range(0, self.n[lay - 1]):
-                    self.d_w[lay][neuroni][neuronj] = (-1 * self.learning_rate) * self.delta[lay][neuroni] * \
-                                                      self.xi[lay - 1][neuronj] + self.momentum * \
-                                                      self.d_w_prev[lay][neuroni][neuronj]
+            self.d_w[lay] = -self.learning_rate * (self.xi[lay - 1] @ self.delta[lay]).T + self.momentum * self.d_w_prev[lay]
 
         for lay in range(1, self.L):
-            for neuroni in range(0, self.n[lay]):
-                self.d_theta[lay][neuroni] = self.learning_rate * self.delta[lay][neuroni] + self.momentum * \
-                                             self.d_theta_prev[lay][neuroni]
+            self.d_theta[lay] = self.learning_rate * self.delta[lay].T + self.momentum * self.d_theta_prev[lay]
 
         # formula 15, we update all the weights and thresholds:
         for lay in range(1, self.L):
-            for neuroni in range(0, self.n[lay]):
-                for neuronj in range(0, self.n[lay - 1]):
-                    self.w[lay][neuroni][neuronj] = self.w[lay][neuroni][neuronj] + self.d_w[lay][neuroni][neuronj]
+            self.w[lay] += self.d_w[lay]
+            self.theta[lay] += self.d_theta[lay]
 
-        for lay in range(1, self.L):
-            for neuroni in range(0, self.n[lay]):
-                self.theta[lay][neuroni] = self.theta[lay][neuroni] + self.d_theta[lay][neuroni]
-
+        # TODO: check if copies are needed here
         self.d_w_prev = [np.copy(arr) for arr in self.d_w]
         self.d_theta_prev = [np.copy(arr) for arr in self.d_theta]
 
@@ -174,22 +147,21 @@ class MyNeuralNetwork:
         return self.epoch_error
 
     def predict(self, X):
-        prediction = np.zeros((len(X), self.n[self.L - 1]))
-        for sample in range(0, len(X)):
-            self.feedForward(X[sample])
-            prediction[sample] = self.xi[self.L - 1]
-        return prediction
+        prediction = X.T
+        for lay in range(1, self.L):
+            prediction = self.activation(self.w[lay] @ prediction - self.theta[lay])
+        return prediction.flatten()
 
 
 # layers include input layer + hidden layers + output layer
 
 if __name__ == '__main__':
     turbine = np.genfromtxt("processed_datasets/turbine.csv", dtype=np.float32, delimiter=',', skip_header=1)
-    my_network = MyNeuralNetwork([4, 5, 3, 1], 10, 0.01, 0.9, "relu", 0.2)
-    my_network.fit(turbine[:, :-1], turbine[:, [-1]])
+    # my_network = MyNeuralNetwork([4, 5, 3, 1], 10, 0.01, 0.9, "relu", 0.2)
+    # my_network.fit(turbine[:, :-1], turbine[:, [-1]])
 
-    # layers = [4, 5, 1]
-    # nn = MyNeuralNetwork(layers, 100, 0.01, 0.01, 'linear', 0.1)
+    layers = [4, 5, 1]
+    nn = MyNeuralNetwork(layers, 100, 0.01, 0.01, 'relu', 0.1)
     #
     # print("L = ", nn.L, end="\n")
     # print("n = ", nn.n, end="\n")
@@ -202,13 +174,16 @@ if __name__ == '__main__':
     # print("wh[1] = ", nn.w[1][0][1], end="\n")
     # print("threshold = ", nn.theta, end="\n")
     #
-    # # nn.fit([[1,2,3,4],[5,6,7,8],[9,10,11,12],[14,15,16,17]],[[1],[2],[3],[4]])
+    nn.fit([[1,2,3,4],[5,6,7,8],[9,10,11,12],[14,15,16,17]],[[1],[2],[3],[4]])
+
+
+
     # nn.fit([[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]])
     #
     # errrr = nn.loss_epochs()
     # print("errror", errrr)
     #
-    # pre = nn.predict([[1, 2, 3, 4], [5, 6, 7, 8]])
-    # print(pre)
+    pre = nn.predict(np.array([[10, 10, 10, 10], [5, 6, 7, 8]]))
+    print(pre)
     #
     # s = np.array([1, 2, 3, 4])
