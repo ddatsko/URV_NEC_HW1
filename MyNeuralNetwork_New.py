@@ -10,8 +10,6 @@ class MyNeuralNetwork:
         'sigmoid': {"forward": lambda x: 1 / (1 + np.exp(-x)),
                     "derivative": lambda x: (1 / (1 + np.exp(-x))) * (1 - (1 / (1 + np.exp(-x))))},
         'tanh': {"forward": lambda x: np.tanh(x), "derivative": lambda x: 1 - np.tanh(x) ** 2}
-        # TODO: add more activation functions here. We can move the implementations to a separate file.
-        #  Also think if this design is good enough, maybe wrap into some classes
     }
 
     # Todo: chnage name of activation function to "fact"
@@ -42,6 +40,7 @@ class MyNeuralNetwork:
         # array is L x numberof neurons in L x number of neurons of L-1
         for lay in range(1, self.L):
             # TODO: make it dependent on activation functions. Here, we use He initialization, which is good for ReLu
+
             self.w.append(np.random.randn(layers[lay], layers[lay - 1]) * np.sqrt(2 / self.n[lay - 1]))
 
         self.theta = []  # values for thresholds
@@ -84,8 +83,7 @@ class MyNeuralNetwork:
 
     def fit(self, X, Y, batch_size=1):
         # split the data
-        x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=self.percentage_of_validation,
-                                                          random_state=12)
+        x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=self.percentage_of_validation)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
         x_val = np.array(x_val)
@@ -107,13 +105,6 @@ class MyNeuralNetwork:
         prediction = self.predict(x_data)
         return np.mean((prediction.flatten() - y_data.flatten()) ** 2)
 
-    def feed_forward(self, sample):
-        # forumla 1 of BP document
-        self.xi[0] = sample
-        for lay in range(1, self.L):
-            self.h[lay] = self.w[lay] @ self.xi[lay - 1] - self.theta[lay]
-            self.xi[lay] = self.activation(self.h[lay])
-
     def backpropagation(self, y):
         # calculating deltas for last layer, BP document formula 11
         last_layer_index = self.L - 1
@@ -121,9 +112,10 @@ class MyNeuralNetwork:
                 self.activation_derivative(self.h[last_layer_index]) * (self.xi[last_layer_index] - y)).T
 
         # we only iterate through layers 1,2,... indextlastyear-1
-        for lay in range(last_layer_index - 1, 0, -1):
+        for lay in range(last_layer_index, 0, -1):
             # formula 12
-            self.delta[lay] = self.activation_derivative(self.h[lay]).T * (self.delta[lay + 1] @ self.w[lay + 1])
+            if lay != last_layer_index:
+                self.delta[lay] = self.activation_derivative(self.h[lay]).T * (self.delta[lay + 1] @ self.w[lay + 1])
 
             # formula 14
             self.d_w[lay] = -self.learning_rate * (self.xi[lay - 1] @ self.delta[lay]).T + self.momentum * \
@@ -147,6 +139,14 @@ class MyNeuralNetwork:
         for lay in range(1, self.L):
             prediction = self.activation(self.w[lay] @ prediction - self.theta[lay])
         return prediction.flatten()
+
+    def feed_forward(self, sample):
+        # forumla 1 of BP document
+        self.xi[0] = sample
+        for lay in range(1, self.L):
+            self.h[lay] = self.w[lay] @ self.xi[lay - 1] - self.theta[lay]
+            self.xi[lay] = self.activation(self.h[lay])
+
 
 
 # layers include input layer + hidden layers + output layer
