@@ -6,9 +6,10 @@ from sklearn.model_selection import train_test_split
 class MyNeuralNetwork:
     activation_functions_ = {
         'relu': {"forward": lambda x: np.maximum(x, 0), "derivative": lambda x: (x > 0) * 1},
-        'linear': {"forward": lambda x: x, "derivative": lambda _: 1},
+        'linear': {"forward": lambda x: x, "derivative": lambda x: np.ones_like(x)},
         'sigmoid': {"forward": lambda x: 1 / (1 + np.exp(-x)),
-                    "derivative": lambda x: (1 / (1 + np.exp(-x))) * (1 - (1 / (1 + np.exp(-x))))}
+                    "derivative": lambda x: (1 / (1 + np.exp(-x))) * (1 - (1 / (1 + np.exp(-x))))},
+        'tanh': {"forward": lambda x: np.tanh(x), "derivative": lambda x: 1 - np.tanh(x) ** 2}
         # TODO: add more activation functions here. We can move the implementations to a separate file.
         #  Also think if this design is good enough, maybe wrap into some classes
     }
@@ -81,10 +82,10 @@ class MyNeuralNetwork:
         for lay in range(1, self.L):
             self.d_w_prev.append(np.zeros((layers[lay], layers[lay - 1])))
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, batch_size=1):
         # split the data
         x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=self.percentage_of_validation,
-                                                          random_state=42)
+                                                          random_state=12)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
         x_val = np.array(x_val)
@@ -94,9 +95,10 @@ class MyNeuralNetwork:
         self.epoch_error = np.zeros((self.number_of_epochs, 2))
         for epoch in range(0, self.number_of_epochs):
             random_indices = np.random.permutation(x_train.shape[0])
-            for sample in random_indices:
-                self.feed_forward(x_train.T[:, [sample]])
-                self.backpropagation(y_train[sample])
+            # np.random.shuffle(x_train)
+            for i in range(0, len(random_indices), batch_size):
+                self.feed_forward(x_train[random_indices[i:i + batch_size], :].T)
+                self.backpropagation(y_train[random_indices[i:i + batch_size]].T)
 
             self.epoch_error[epoch][0] = self.mean_squared_error(x_train, y_train)
             self.epoch_error[epoch][1] = self.mean_squared_error(x_val, y_val)
@@ -108,7 +110,6 @@ class MyNeuralNetwork:
     def feed_forward(self, sample):
         # forumla 1 of BP document
         self.xi[0] = sample
-        # print(sample.shape)
         for lay in range(1, self.L):
             self.h[lay] = self.w[lay] @ self.xi[lay - 1] - self.theta[lay]
             self.xi[lay] = self.activation(self.h[lay])
@@ -117,21 +118,17 @@ class MyNeuralNetwork:
         # calculating deltas for last layer, BP document formula 11
         last_layer_index = self.L - 1
         self.delta[last_layer_index] = (
-                    self.activation_derivative(self.h[last_layer_index]) * (self.xi[last_layer_index] - y)).T
+                self.activation_derivative(self.h[last_layer_index]) * (self.xi[last_layer_index] - y)).T
 
-        # formula 12
         # we only iterate through layers 1,2,... indextlastyear-1
         for lay in range(last_layer_index - 1, 0, -1):
-            der = self.activation_derivative(self.h[lay])
+            # formula 12
             self.delta[lay] = self.activation_derivative(self.h[lay]).T * (self.delta[lay + 1] @ self.w[lay + 1])
 
-        # formula 14
-        for lay in range(1, self.L):
+            # formula 14
             self.d_w[lay] = -self.learning_rate * (self.xi[lay - 1] @ self.delta[lay]).T + self.momentum * \
                             self.d_w_prev[lay]
-
-        for lay in range(1, self.L):
-            self.d_theta[lay] = self.learning_rate * self.delta[lay].T + self.momentum * self.d_theta_prev[lay]
+            self.d_theta[lay] = self.learning_rate * np.sum(self.delta[lay].T, axis=1, keepdims=True) + self.momentum * self.d_theta_prev[lay]
 
         # formula 15, we update all the weights and thresholds:
         for lay in range(1, self.L):
