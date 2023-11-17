@@ -83,6 +83,7 @@ class MyNeuralNetwork:
 
     def fit(self, X, Y, batch_size=1):
         # split the data
+        # np.random.seed(39)
         x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=self.percentage_of_validation)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
@@ -147,37 +148,3 @@ class MyNeuralNetwork:
             self.h[lay] = self.w[lay] @ self.xi[lay - 1] - self.theta[lay]
             self.xi[lay] = self.activation(self.h[lay])
 
-
-
-# layers include input layer + hidden layers + output layer
-
-if __name__ == '__main__':
-    turbine = np.genfromtxt("processed_datasets/turbine.csv", dtype=np.float32, delimiter=',', skip_header=1)
-    # my_network = MyNeuralNetwork([4, 5, 3, 1], 10, 0.01, 0.9, "relu", 0.2)
-    # my_network.fit(turbine[:, :-1], turbine[:, [-1]])
-
-    layers = [4, 5, 1]
-    nn = MyNeuralNetwork(layers, 100, 0.01, 0.01, 'relu', 0.1)
-    #
-    # print("L = ", nn.L, end="\n")
-    # print("n = ", nn.n, end="\n")
-    #
-    # print("xi = ", nn.xi, end="\n")
-    # print("xi[0] = ", nn.xi[0], end="\n")
-    # print("xi[1] = ", nn.xi[0], end="\n")
-    #
-    # print("wh = ", nn.w, end="\n")
-    # print("wh[1] = ", nn.w[1][0][1], end="\n")
-    # print("threshold = ", nn.theta, end="\n")
-    #
-    nn.fit([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [14, 15, 16, 17]], [[1], [2], [3], [4]])
-
-    # nn.fit([[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]])
-    #
-    # errrr = nn.loss_epochs()
-    # print("errror", errrr)
-    #
-    pre = nn.predict(np.array([[10, 10, 10, 10], [5, 6, 7, 8]]))
-    print(pre)
-    #
-    # s = np.array([1, 2, 3, 4])
